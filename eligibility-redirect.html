@@ -1,3 +1,8 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Redirecting...</title>
+<meta charset="UTF-8">
 <script>
 // CONFIGURE THESE VALUES
 const SHEET_ID = "1FbTafveUOpNkExfkMYkqKNYw0j2IW3aeVcIWY6-sHeU";
@@ -21,28 +26,30 @@ const res = await fetch(endpoint);
 const text = await res.text();
 const json = JSON.parse(text.substring(47).slice(0, -2)); // Remove Google Sheets wrapper
 
-const headers = json.table.cols.map(col => col.label.trim().toLowerCase());
+const headers = json.table.cols.map(col => col.label?.toString().trim().toLowerCase());
 const rows = json.table.rows.map(row =>
 row.c.reduce((acc, val, idx) => {
-const header = headers[idx];
-acc[header] = val ? val.v.toString().trim() : "";
+acc[headers[idx]] = val ? val.v.toString().trim() : "";
 return acc;
 }, {})
 );
 
-console.log("Looking for submission_id:", subID);
+console.log("Looking for submission ID:", subID);
 console.log("Parsed rows:", rows);
 
-const match = rows.find(row => row.submission_id === subID);
+const match = rows.find(row =>
+row?.submission_id?.toString().trim() === subID
+);
+
 if (match && match.eligibility_url) {
 window.location.href = match.eligibility_url;
 } else {
 document.body.innerHTML = `
 <h3>No match found for submission ID: ${subID}</h3>
-<p>Double-check your spreadsheet values.</p>
 <pre>${JSON.stringify(rows, null, 2)}</pre>
 `;
 }
+
 } catch (err) {
 console.error("Fetch or parsing error:", err);
 document.body.innerHTML = `<h3>Error fetching redirect data.</h3>`;
@@ -51,3 +58,8 @@ document.body.innerHTML = `<h3>Error fetching redirect data.</h3>`;
 
 document.addEventListener("DOMContentLoaded", redirectToResult);
 </script>
+</head>
+<body>
+<h3>Checking eligibility…</h3>
+</body>
+</html>
