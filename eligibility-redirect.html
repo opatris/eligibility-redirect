@@ -1,114 +1,53 @@
-<!DOCTYPE html>
-
-<html>
-
-<head>
-
-  <title>Redirecting...</title>
-
-  <meta charset="UTF-8">
-
-  <script>
-
-    // CONFIGURE THESE VALUES
-
-    const SHEET_ID = "1FbTafveUOpNkExfkMYkqKNYw0j2IW3aeVcIWY6-sHeU";
-
-    const SHEET_TAB = "redirects";
-
-
-
-    function getParam(name) {
-
-      const url = new URL(window.location.href);
-
-      return url.searchParams.get(name);
-
-    }
-
-
-
-    async function redirectToResult() {
-
-      const subID = getParam('submission_id');
-
-      if (!subID) {
-
-        document.body.innerHTML = "<h3>Missing submission ID in URL.</h3>";
-
-        return;
-
-      }
-
-
-
-      const endpoint = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_TAB}`;
-
-      try {
-
-        const res = await fetch(endpoint);
-
-        const text = await res.text();
-
-        const json = JSON.parse(text.substr(47).slice(0, -2)); // Remove Google Sheets wrapper
-
-
-
-        const headers = json.table.cols.map(col => col.label);
-
-        const rows = json.table.rows.map(row =>
-
-          row.c.reduce((acc, val, idx) => {
-
-            acc[headers[idx]] = val ? val.v : "";
-
-            return acc;
-
-          }, {})
-
-        );
-
-
-
-        const match = rows.find(row => row.submission_id === subID);
-
-        if (match && match.eligibility_url) {
-
-          window.location.href = match.eligibility_url;
-
-        } else {
-
-          document.body.innerHTML = `<h3>No match found for submission ID: ${subID}</h3>`;
-
-        }
-
-
-
-      } catch (err) {
-
-        console.error(err);
-
-        document.body.innerHTML = `<h3>Error fetching redirect data.</h3>`;
-
-      }
-
-    }
-
-
-
-    document.addEventListener("DOMContentLoaded", redirectToResult);
-
-  </script>
-
-</head>
-
-<body>
-
-  <h3>Checking eligibility…</h3>
-
-</body>
-
-
-</html>
-
-
+<script>
+// CONFIGURE THESE VALUES
+const SHEET_ID = "1FbTafveUOpNkExfkMYkqKNYw0j2IW3aeVcIWY6-sHeU";
+const SHEET_TAB = "redirects";
+
+function getParam(name) {
+const url = new URL(window.location.href);
+return url.searchParams.get(name);
+}
+
+async function redirectToResult() {
+const subID = getParam('submission_id')?.trim();
+if (!subID) {
+document.body.innerHTML = "<h3>Missing submission ID in URL.</h3>";
+return;
+}
+
+const endpoint = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_TAB}`;
+try {
+const res = await fetch(endpoint);
+const text = await res.text();
+const json = JSON.parse(text.substring(47).slice(0, -2)); // Remove Google Sheets wrapper
+
+const headers = json.table.cols.map(col => col.label.trim().toLowerCase());
+const rows = json.table.rows.map(row =>
+row.c.reduce((acc, val, idx) => {
+const header = headers[idx];
+acc[header] = val ? val.v.toString().trim() : "";
+return acc;
+}, {})
+);
+
+console.log("Looking for submission_id:", subID);
+console.log("Parsed rows:", rows);
+
+const match = rows.find(row => row.submission_id === subID);
+if (match && match.eligibility_url) {
+window.location.href = match.eligibility_url;
+} else {
+document.body.innerHTML = `
+<h3>No match found for submission ID: ${subID}</h3>
+<p>Double-check your spreadsheet values.</p>
+<pre>${JSON.stringify(rows, null, 2)}</pre>
+`;
+}
+} catch (err) {
+console.error("Fetch or parsing error:", err);
+document.body.innerHTML = `<h3>Error fetching redirect data.</h3>`;
+}
+}
+
+document.addEventListener("DOMContentLoaded", redirectToResult);
+</script>
