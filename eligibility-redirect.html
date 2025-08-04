@@ -38,11 +38,11 @@ console.log("Looking for submission ID:", subID);
 console.log("Parsed rows:", rows);
 
 const match = rows.find(row =>
-row?.submission_id?.toString().trim() === subID
+row.col0 === subID
 );
 
-if (match && match.eligibility_url) {
-window.location.href = match.eligibility_url;
+if (match && match.col1) {
+window.location.href = match.col1;
 } else {
 document.body.innerHTML = `
 <h3>No match found for submission ID: ${subID}</h3>
@@ -63,3 +63,4 @@ document.addEventListener("DOMContentLoaded", redirectToResult);
 <h3>Checking eligibility…</h3>
 </body>
 </html>
+
