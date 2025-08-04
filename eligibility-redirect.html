@@ -34,7 +34,7 @@ const match = rows.find(row => row[0] === subID);
 if (match && match[1]) {
 window.location.href = match[1]; // redirect to eligibility_url
 } else {
-document.body.innerHTML = `<h3>No match found for submission ID: ${subID}</h3>`;
+document.body.innerHTML = `<h3>Please refresh page. Currently searching for submission ID: ${subID}</h3>`;
 }
 
 } catch (err) {
@@ -50,3 +50,4 @@ document.addEventListener("DOMContentLoaded", redirectToResult);
 <h3>Checking eligibility…</h3>
 </body>
 </html>
+
