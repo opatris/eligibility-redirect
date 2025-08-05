@@ -3,51 +3,112 @@
 <head>
 <title>Redirecting...</title>
 <meta charset="UTF-8">
+<style>
+body {
+font-family: Arial, sans-serif;
+text-align: center;
+padding-top: 50px;
+background-color: #f9f9f9;
+}
+.spinner {
+margin: 20px auto;
+width: 40px;
+height: 40px;
+border: 4px solid #ccc;
+border-top: 4px solid #007BFF;
+border-radius: 50%;
+animation: spin 1s linear infinite;
+}
+@keyframes spin {
+to { transform: rotate(360deg); }
+}
+#status {
+font-size: 18px;
+margin-top: 20px;
+color: #333;
+}
+#retry-btn {
+display: none;
+margin-top: 30px;
+padding: 10px 20px;
+font-size: 16px;
+background-color: #007BFF;
+color: white;
+border: none;
+border-radius: 5px;
+cursor: pointer;
+}
+#retry-btn:hover {
+background-color: #0056b3;
+}
+</style>
+</head>
+<body>
+<h2>Checking eligibility...</h2>
+<div class="spinner" id="spinner"></div>
+<div id="status">Please wait while we verify your information.</div>
+<button id="retry-btn" onclick="retry()">Try Again</button>
+
 <script>
 const SHEET_ID = "1FbTafveUOpNkExfkMYkqKNYw0j2IW3aeVcIWY6-sHeU";
 const SHEET_TAB = "redirects";
+const MAX_RETRIES = 5;
+const RETRY_DELAY_MS = 1500;
+
+let currentSubID = null;
 
 function getParam(name) {
 const url = new URL(window.location.href);
 return url.searchParams.get(name);
 }
 
-async function redirectToResult() {
-const subID = getParam('submission_id');
-if (!subID) {
-document.body.innerHTML = "<h3>Missing submission ID in URL.</h3>";
-return;
-}
-
+async function fetchSheetData() {
 const endpoint = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_TAB}`;
-try {
 const res = await fetch(endpoint);
 const text = await res.text();
-const json = JSON.parse(text.substring(47).slice(0, -2)); // strip Google Sheets wrapper
+const json = JSON.parse(text.substring(47).slice(0, -2));
+return json.table.rows
+.map(row => row.c.map(cell => (cell ? cell.v : "")))
+.filter(row => row.length > 1 && row[0] !== "submission_id");
+}
 
-const rows = json.table.rows
-.map(row => row.c.map(cell => (cell ? cell.v : ""))) // extract raw values
-.filter(row => row.length > 1 && row[0] !== "submission_id"); // skip header
+async function tryRedirect(subID, attempt = 1) {
+currentSubID = subID;
+document.getElementById("status").innerText =
+`Checking eligibility (Attempt ${attempt} of ${MAX_RETRIES})...`;
+document.getElementById("spinner").style.display = "block";
+document.getElementById("retry-btn").style.display = "none";
 
+const rows = await fetchSheetData();
 const match = rows.find(row => row[0] === subID);
 
 if (match && match[1]) {
-window.location.href = match[1]; // redirect to eligibility_url
+window.location.href = match[1];
+} else if (attempt < MAX_RETRIES) {
+setTimeout(() => tryRedirect(subID, attempt + 1), RETRY_DELAY_MS);
 } else {
-document.body.innerHTML = `<h3>Please refresh page. Currently searching for submission ID: ${subID}</h3>`;
-}
-
-} catch (err) {
-console.error(err);
-document.body.innerHTML = `<h3>Error fetching redirect data.</h3>`;
+document.getElementById("status").innerHTML =
+`<strong>We couldn’t find your eligibility info. Please try again shortly or contact support.</strong>`;
+document.getElementById("spinner").style.display = "none";
+document.getElementById("retry-btn").style.display = "inline-block";
 }
 }
 
-document.addEventListener("DOMContentLoaded", redirectToResult);
+function retry() {
+if (currentSubID) {
+tryRedirect(currentSubID, 1);
+}
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+const subID = getParam('submission_id');
+if (!subID) {
+document.getElementById("status").innerHTML = "<strong>Missing submission ID in URL.</strong>";
+document.getElementById("spinner").style.display = "none";
+return;
+}
+tryRedirect(subID);
+});
 </script>
-</head>
-<body>
-<h3>Checking eligibility…</h3>
 </body>
 </html>
-
